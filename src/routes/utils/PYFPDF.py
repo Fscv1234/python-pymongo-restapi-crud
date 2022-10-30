@@ -7,7 +7,7 @@ from fpdf import FPDF
 
 class PYFPDF(FPDF):
     def __init__(self):
-        FPDF.__init__(self, "P", "cm", "A4")
+        FPDF.__init__(self, "P", "cm", [8.5,14.8])
 
         self.lcTitulo = "FORMATO"
 

@@ -16,7 +16,7 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 app.config["SECURE"] = True
 app.config["PATH_FILE"] = os.path.join(PROJECT_ROOT, "src", "file")
-app.config["DSN_PSQL"] = "host=172.27.0.2 dbname=my_db user=postgres password=postgres port=5432"
+app.config["DSN_PSQL"] = "host=172.18.0.3 dbname=my_db user=postgres password=postgres port=5432"
 handler = logging.FileHandler(
     os.path.join(PROJECT_ROOT, "src", "file", "app.log")
 )  # errors logged to this file

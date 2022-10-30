@@ -53,7 +53,8 @@
 				<th scope="col">ID</th>
 				<th scope="col">Tipo</th>
 				<th scope="col">Nombre</th>
-				<th scope="col">Eliminar</th>
+				<th scope="col">Costo</th>
+				<th scope="col">Quitar de carrito</th>
 			</tr>
 		</thead>
 		<tbody>
@@ -66,17 +67,54 @@
 				<td>{{ v }}</td>
 				{% endif %} {% endfor %}
 				<td>{{item["name"]}}</td>
+				{% for k, v in prices.items() %} {% if k == item["categoryid"]
+				%}
+				<td>{{ v }}</td>
+				{% endif %} {% endfor %}
 				<td>
 					<button
 						onclick="drop_from_car('{{ item['id'] }}')"
-						class="btn btn-danger"
+						class="btn btn-dark"
 						type="button"
 					>
-						Eliminar
+					Quitar de carrito
 					</button>
 				</td>
 			</tr>
 			{% endfor %}
+			<tr>
+				<td class="table-secondary" colspan="3"></td>
+				<td class="table-secondary" >
+					<input
+						class="form-control"
+						type="input"
+						id="client_money"
+						placeholder="Dinero del cliente"
+						aria-label="Dinero del cliente"
+					/>
+				</td>
+				<td class="table-secondary">
+					<input
+						class="form-control"
+						type="input"
+						id="total_price"
+						value="{{ total }}"
+						placeholder="total"
+						aria-label="total"
+						readonly="true"
+					/>
+				</td>
+				<td class="table-secondary">
+					<input
+						class="form-control"
+						type="input"
+						id="give_back"
+						placeholder="give_back"
+						aria-label="give_back"
+						readonly="true"
+					/>
+				</td>
+			</tr>
 		</tbody>
 	</table>
 </div>
@@ -101,11 +139,30 @@
 			.catch((error) => console.error("Error:", error))
 			.then((response) => {
 				console.log("Success:", response);
-				if ((response.ok = 1)) {
+				if ((response.ok == 1)) {
 					console.log("Success:", response);
 					get_file("/ticket/report/"+ response.message + ".pdf",".pdf");
 				}
+				else{
+					alert(response.message);
+				}
 			});
+	}
+
+	const client_money = document.getElementById('client_money');
+
+	client_money.addEventListener('focusout', (event) => {
+		console.log("Go for it:");
+		get_money_feedback();
+	});
+
+	function get_money_feedback(){
+		money = client_money.value;
+		console.log("money:", money);
+		total = document.getElementById("total_price").value;
+		console.log("total:", total);
+		console.log("give back:", parseFloat(money)-parseFloat(total));
+		document.getElementById("give_back").value = parseFloat(money)-parseFloat(total);
 	}
 
 	function report_xls(){

@@ -65,8 +65,8 @@ def tickets(idx):
     else:
         data = get_data(f" WHERE id = {idx}")
     if session.get("payment"):
-        print("---SESSION", file=stderr)
-        print(session["payment"], file=stderr)
+        print("---SESSION")
+        print(session["payment"])
         for indice in range(len(data)):
             if data[indice]["id"] in session["payment"]:
                 data[indice]["flag"] = 1    
@@ -86,6 +86,17 @@ def tickets(idx):
 @login_required
 def reset_payment():
     session["payment"] = set()
+    return {"ok": 1, "message": "SESSION LIMPIA"}
+
+
+@Ticket.route("/add_pays")
+@login_required
+def add_payment():
+    param = request.args.get("param").upper()
+    session["payment"] = set()
+    lst = param.split(",")
+    for item in lst:
+        session["payment"].add(int(item))
     return {"ok": 1, "message": "SESSION LIMPIA"}
 
 
@@ -120,13 +131,13 @@ def filter_ticket():
 def add_to_car():
     try:
         id = int(request.args.get("idx"))
-        if session.get("payment"):
+        if not session.get("payment"):
             session["payment"] = set()
         if id not in session["payment"]:
             session["payment"].add(id)
     except Exception as err:
-        print("---ERROR", file=stderr)
-        print(err, file=stderr)
+        print("---ERROR")
+        print(err)
     return redirect(url_for("Ticket.tickets"))
 
 
@@ -142,16 +153,21 @@ def drop_from_car():
 @Ticket.route("/pay", methods=["GET"])
 def pays():
     ladatos = list()
+    total = 0
     if session.get("payment"):
         filter = ",".join([str(item) for item in session["payment"]])
         ladatos = get_data(f" WHERE id in ({filter})")
-        print(ladatos, file=stderr)
+        for item in ladatos:
+            total += PRICES[item["categoryid"]]
+        print(ladatos)
     return render_template(
         "payment.html",
         title="payment",
         current_user=session["current_user"],
         datos=ladatos,
         categories=CATEGORIES,
+        prices=PRICES,
+        total=total
     )
 
 
@@ -185,37 +201,63 @@ def save_ticket():
         name=UPPER('{tmp["name"]}'),levelid={tmp["levelid"]},gradeid={tmp["gradeid"]},categoryid='{tmp["categoryid"]}',write_uid={session["current_user"]["id"]},write_at=NOW()
         WHERE id = {tmp["id"]}"""
     _ReferencePlSql.exec(query)
-    print(query, file=stderr)
+    print(query)
     return {"ok": 1, "message": "CREADO EXITOSAMENTE(TICKET)"}
 
 
 @Ticket.route("/payment", methods=["POST"])
 def payment():
     _ReferencePlSql = PlSql(current_app.config["DSN_PSQL"])
-    name = request.args.get("name")  if request.args.get("name") else "GRACIAS POR SU PARTICIPACION"
+    tmp = request.get_json()
+    name = tmp.get("name").upper()  if tmp.get("name") else "GRACIAS POR SU PARTICIPACION"
     response = {"ok": 0, "message": "ERROR AL GENERAR PAGART"}
     if session.get("payment"):
         filter = ",".join([str(item) for item in session["payment"]])
-        query = f"INSERT INTO payment(stateid) VALUES('A') RETURNING id"
+        tmp = get_data(f" WHERE id in ({filter}) AND stateid = 'E' AND paymentid IS NOT NULL")
+        err = ""
+        for row in tmp:
+            if row["id"] in session["payment"]:
+                err += f"\n ITEM PAGADO {row['id']}"
+        if err == "":
+            query = f"INSERT INTO payment(name, stateid) VALUES('{name}', 'A') RETURNING id"
+            _ReferencePlSql.exec(query)
+            serial = _ReferencePlSql.data[0][0]
+            query1 = f"UPDATE ticket SET stateid = 'E', paymentid = {serial} WHERE id IN ({filter})"
+            _ReferencePlSql.exec(query1)
+            res = print(serial)
+            if res["ok"]:
+                session["payment"] = set()
+                response = {"ok": 1, "message": str(serial).zfill(8)}
+        else:
+            response = {"ok": 0, "message": err}
+    return response
+
+
+@Ticket.route("/generate_again/<id>", methods=["GET"])
+def print(id):
+    try:
+        nserial = str(id).zfill(8)
+        _ReferencePlSql = PlSql(current_app.config["DSN_PSQL"])
+        query = f"SELECT name FROM payment WHERE id = {id}"
         _ReferencePlSql.exec(query)
-        serial = _ReferencePlSql.data[0][0]
-        nserial = str(serial).zfill(8)
-        query1 = f"UPDATE ticket SET stateid = 'E', paymentid = {serial} WHERE id IN ({filter})"
-        _ReferencePlSql.exec(query1)
+        name = _ReferencePlSql.data[0][0]
         loPdf = PaymentPDF(current_app.config["PATH_FILE"], nserial)
-        loPdf.setData({"name": name.upper(), "id": nserial})
-        tmp_data = get_data(f" WHERE id IN ({filter})")
+        loPdf.setData({"name": name, "id": nserial})
+        tmp_data = get_data(f" WHERE paymentid = {id}")
         loPdf.setDatos(tmp_data)
         loPdf.mxprint(CATEGORIES, PRICES, DATE_FORMAT)
-        session["payment"] = set()
-        response = {"ok": 1, "message": nserial}
-    return response
+        response = {"ok": 1, "message": "good"}
+    except Exception as e:
+        response = {"ok": 0, "message": str(e)}
+    finally:
+        return response
 
 @Ticket.route("/drop_payment", methods=["POST"])
 def drop_payment():
     _ReferencePlSql = PlSql(current_app.config["DSN_PSQL"])
     try:
-        paymentid = int(request.args.get("id"))
+        tmp = request.get_json()
+        paymentid = int(tmp["paymentid"])
     except Exception as e:
         return {"ok": 0, "message": "DEBE SER UN NUMERO"}    
     query = f"UPDATE payment SET stateid = 'X' WHERE id = {paymentid}"
@@ -232,6 +274,7 @@ def send_pdf(filename):
 
 @Ticket.route("/report/xls")
 def send_xls():
+    print("----REPORTE DE VENTAS")
     try:
         PATH_FILE = os.path.join(current_app.config["PATH_FILE"], "report.csv")
         ladatos = get_data(f" WHERE stateid = 'E' AND paymentid IS NOT NULL")
@@ -242,6 +285,7 @@ def send_xls():
             cat = tmp["categoryid"]
             tmp["category"] = CATEGORIES[cat]
             tmp["price"] = PRICES[cat]
+            tmp["state"] = LEVELS[str(ladatos[indice]["stateid"])]
             tmp["level"] = LEVELS[str(ladatos[indice]["levelid"])]
             tmp["grade"] = GRADES[str(ladatos[indice]["gradeid"])]
             data.append(tmp)
@@ -260,10 +304,11 @@ def send_xls():
             'price',
             'category',
             'grade',
-            'level'
+            'level',
+            'state'
         ]
-        print("----DATA", file=stderr)
-        print(data, file=stderr)  
+        print("----DATA")
+        print(data)  
         with open(PATH_FILE, "w") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=slots)
             writer.writeheader()

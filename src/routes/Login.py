@@ -16,7 +16,7 @@ Login = Blueprint("Login", __name__)
 
 @Login.route("/login", methods=["GET", "POST"])
 def login():
-    users = {"caja1": "parrillada", "caja2": "pollada"}
+    users = {"caja1": "parrillada", "caja2": "pollada", "admin": "admin"}
     ids = {"caja1": 0, "caja2": 1}
     error = None
     user = {"id": 0, "name": "INVITADO", "is_authenticated": False}

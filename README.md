@@ -9,3 +9,11 @@ echo "host    all             all              ::/0                            m
 
 
 UPDATE ticket SET name='ANDRADE/PUMA/GHIAN BENITO',levelid=2,gradeid=3,categoryid='R',write_uid=0,write_at=NOW() WHERE id = 3
+DESCARGAR DESDE CARRITO
+JAVASCRIPT
+get_file("/ticket/report/00000001.pdf",".pdf")
+GENERAR
+RUTA
+http://localhost:3000/ticket/generate_again/6
+REGULARIZAR
+http://localhost:3000/ticket/add_pays?param=1,2,3,4,5

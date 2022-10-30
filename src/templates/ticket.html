@@ -157,13 +157,15 @@
 				.catch((error) => console.error("Error:", error))
 				.then((response) => {
 					console.log("Success:", response);
-					document.getElementById("isnew").value          = isnew;
-					document.getElementById("modal_idx").value      = response.id;
-					document.getElementById("modal_id").value       = response.ticketid;
-					document.getElementById("modal_name").value     = response.name;
-					document.getElementById('modal_level').value    = response.levelid;
-					document.getElementById('modal_grade').value    = response.gradeid;
-					document.getElementById('modal_category').value = response.categoryid;
+					if ((response)) {
+						document.getElementById("isnew").value          = isnew;
+						document.getElementById("modal_idx").value      = response.id;
+						document.getElementById("modal_id").value       = response.ticketid;
+						document.getElementById("modal_name").value     = response.name;
+						document.getElementById('modal_level').value    = response.levelid;
+						document.getElementById('modal_grade').value    = response.gradeid;
+						document.getElementById('modal_category').value = response.categoryid;
+					}
 			});
 		}
 		document.getElementById("isnew").value = isnew;
@@ -184,6 +186,7 @@
 	function drop_payment() {
 		const id = prompt("Numero de comprobante");
 		var url = "/ticket/drop_payment";
+		console.error("ID:", id)
 		var data = { paymentid: id };
 
 		fetch(url, {
@@ -196,6 +199,7 @@
 			.then((res) => res.json())
 			.catch((error) => console.error("Error:", error))
 			.then((response) => console.log("Success:", response));
+			window.location.href = "/ticket/";
 	}
 
 	function add_ticket_to_car(idx) {
